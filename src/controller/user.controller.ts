@@ -1,8 +1,9 @@
-import { NextFunction, Request ,Response } from 'express';
-import  jwt  from 'jsonwebtoken';
+import { NextFunction, Request, Response } from 'express'
+import jwt from 'jsonwebtoken'
 import config from '../config'
-
-import UserModel from '../models/user.model';
+import action from '../audit/auditAction'
+import { dateFormat, prepareAudit } from '../audit/auditService'
+import UserModel from '../models/user.model'
 const userModel = new UserModel()
 
 export const Create = async (
@@ -17,8 +18,14 @@ export const Create = async (
       data: { ...user },
       message: 'User created successfully',
     })
+    prepareAudit(
+      action.CREATE_USER,
+      {...user},
+      'postman',
+      dateFormat(),
+      null,
+    )
     //const { email, user_name, first_name, last_name } = res.body.data
-    
   } catch (err) {
     next(err)
   }
@@ -29,9 +36,9 @@ export const getAllUsers = async (
   _req: Request,
   res: Response,
   next: NextFunction
-  ) => {
-    try {
-      const users = await userModel.getMany()
+) => {
+  try {
+    const users = await userModel.getMany()
     res.json({
       status: 'success',
       data: { ...users },
@@ -62,7 +69,11 @@ export const getUser = async (
 }
 //################################################################
 //################################################################
-export const updateUser = async(req:Request,res:Response,next:NextFunction)=>{
+export const updateUser = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const user = await userModel.updateOne(req.body)
     res.json({
@@ -76,7 +87,11 @@ export const updateUser = async(req:Request,res:Response,next:NextFunction)=>{
 }
 //################################################################
 //################################################################
-export const deleteUser = async(req:Request,res:Response,next:NextFunction)=>{
+export const deleteUser = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const user = await userModel.deleteUser(req.params.id as unknown as string)
     res.json({
@@ -89,24 +104,28 @@ export const deleteUser = async(req:Request,res:Response,next:NextFunction)=>{
   }
 }
 
-
-export const authenticate =async (req:Request,res:Response,next:NextFunction)=>{
-try {
-  const {email,password} = req.body
-  const user = await userModel.authenticate(email,password)
-  const token = jwt.sign({user},config.JWT_SECRET as unknown as string)
-  if(!user){
-    return res.status(401).json({
-      status: 'error',
-      message: 'the username and password do not match please try again',
-    })
-  }else{
-    return res.json({status: 'success',
-    data: { ...user, token },
-    message: 'user authenticated successfully',
-  })
-}
-} catch (error) {
-  next(error)
-}
+export const authenticate = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { email, password } = req.body
+    const user = await userModel.authenticate(email, password)
+    const token = jwt.sign({ user }, config.JWT_SECRET as unknown as string)
+    if (!user) {
+      return res.status(401).json({
+        status: 'error',
+        message: 'the username and password do not match please try again',
+      })
+    } else {
+      return res.json({
+        status: 'success',
+        data: { ...user, token },
+        message: 'user authenticated successfully',
+      })
+    }
+  } catch (error) {
+    next(error)
+  }
 }
